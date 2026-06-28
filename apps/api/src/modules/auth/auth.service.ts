@@ -25,6 +25,15 @@ function hashToken(rawToken: string): string {
 	return createHash('sha256').update(rawToken).digest('hex')
 }
 
+// A real Argon2id hash of a throwaway value (not a secret). When an email has no account we
+// still verify against this so the response time matches the real path — otherwise the timing
+// gap (skipping Argon2) lets an attacker enumerate which emails exist.
+let dummyHashPromise: Promise<string> | null = null
+function dummyPasswordHash(): Promise<string> {
+	dummyHashPromise ??= hashPassword('timing-equalizer.not-a-real-credential')
+	return dummyHashPromise
+}
+
 export async function login(
 	email: string,
 	password: string,
@@ -32,6 +41,8 @@ export async function login(
 ): Promise<LoginResult> {
 	const user = await findUserForLogin(email)
 	if (!user || user.status !== UserStatus.ACTIVE) {
+		// Equalize timing with the real-user path (see dummyPasswordHash) before rejecting.
+		await verifyPassword(await dummyPasswordHash(), password)
 		throw new UnauthorizedAppError('Invalid email or password.')
 	}
 
@@ -106,10 +117,15 @@ export async function requestPasswordReset(email: string): Promise<void> {
 		entityId: user.id,
 	})
 
-	// ponytail: no mailer wired — log the link in dev. Replace this line with a real email send
-	// (the raw token must never be persisted, only delivered here).
-	const resetLink = `${env.WEB_ORIGIN}/reset-password?token=${rawToken}`
-	logger.info({ email: user.email, resetLink }, 'Password reset requested')
+	// ponytail: no mailer wired. Replace the dev branch with a real email send (the raw token
+	// must only ever be delivered to the user, never persisted). Logging the token outside dev
+	// would hand account takeover to anyone with log access, so production logs nothing sensitive.
+	if (env.NODE_ENV === 'production') {
+		logger.info({ userId: user.id }, 'Password reset requested')
+	} else {
+		const resetLink = `${env.WEB_ORIGIN}/reset-password?token=${rawToken}`
+		logger.info({ email: user.email, resetLink }, 'Password reset requested (dev)')
+	}
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<void> {
