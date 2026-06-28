@@ -97,18 +97,37 @@ model PasswordReset {
 }
 
 model Customer {
-  id        String         @id @default(uuid())
-  name      String
-  email     String
-  company   String?
-  status    CustomerStatus @default(ACTIVE)
-  mrrCents  Int            @default(0) // monthly recurring revenue, in cents
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id            String         @id @default(uuid())
+  name          String
+  email         String
+  company       String?
+  status        CustomerStatus @default(ACTIVE)
+  mrrCents      Int            @default(0) // monthly recurring revenue, in cents
+  subscriptions Subscription[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([status])
   @@index([email])
   @@map("customers")
+}
+
+model Subscription {
+  id               String             @id @default(uuid())
+  customerId       String
+  customer         Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  plan             SubscriptionPlan
+  status           SubscriptionStatus @default(TRIALING)
+  interval         BillingInterval    @default(MONTHLY)
+  priceCents       Int
+  currentPeriodEnd DateTime
+  canceledAt       DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@map("subscriptions")
 }
 
 model AuditLog {
@@ -134,4 +153,22 @@ enum CustomerStatus {
   ACTIVE
   PAST_DUE
   CANCELED
+}
+
+enum SubscriptionPlan {
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
 }

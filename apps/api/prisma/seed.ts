@@ -27,6 +27,7 @@ async function main() {
     await client.permission.deleteMany({})
     await client.auditLog.deleteMany({})
     await client.session.deleteMany({})
+    await client.subscription.deleteMany({})
     await client.customer.deleteMany({})
 
     for (const key of permissions) {
@@ -129,6 +130,34 @@ async function main() {
         { name: 'Hooli', email: 'finance@hooli.test', company: 'Hooli', status: 'CANCELED', mrrCents: 0 },
       ],
     })
+
+    const acme = await client.customer.findFirst({ where: { email: 'billing@acme.test' } })
+    const globex = await client.customer.findFirst({ where: { email: 'ap@globex.test' } })
+    const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    if (acme) {
+      await client.subscription.create({
+        data: {
+          customerId: acme.id,
+          plan: 'PRO',
+          status: 'ACTIVE',
+          interval: 'MONTHLY',
+          priceCents: 49900,
+          currentPeriodEnd: periodEnd,
+        },
+      })
+    }
+    if (globex) {
+      await client.subscription.create({
+        data: {
+          customerId: globex.id,
+          plan: 'ENTERPRISE',
+          status: 'ACTIVE',
+          interval: 'YEARLY',
+          priceCents: 1299900,
+          currentPeriodEnd: periodEnd,
+        },
+      })
+    }
   })
 
   console.log('Seeded demo auth roles, permissions, and users.')

@@ -5,3 +5,4 @@
 export * from './schemas/common.js'
 export * from './schemas/auth.js'
 export * from './schemas/customer.js'
+export * from './schemas/subscription.js'
