@@ -16,6 +16,9 @@ async function main() {
     'audit:read',
     'settings:read',
     'settings:write',
+    'billing:read',
+    'billing:write',
+    'billing:delete',
   ]
 
   await prisma.$transaction(async (client) => {
@@ -24,6 +27,7 @@ async function main() {
     await client.permission.deleteMany({})
     await client.auditLog.deleteMany({})
     await client.session.deleteMany({})
+    await client.customer.deleteMany({})
 
     for (const key of permissions) {
       await client.permission.create({
@@ -51,7 +55,7 @@ async function main() {
         description: 'Limited write access.',
         permissions: {
           create: permissions
-            .filter((key) => key !== 'users:delete' && key !== 'settings:write')
+            .filter((key) => key !== 'users:delete' && key !== 'settings:write' && key !== 'billing:delete')
             .map((key) => ({
               permission: {
                 connect: { key },
@@ -67,7 +71,7 @@ async function main() {
         description: 'Read-only access.',
         permissions: {
           create: permissions
-            .filter((key) => key === 'users:read' || key === 'audit:read')
+            .filter((key) => key === 'users:read' || key === 'audit:read' || key === 'billing:read')
             .map((key) => ({
               permission: {
                 connect: { key },
@@ -115,6 +119,15 @@ async function main() {
           create: [{ role: { connect: { id: viewerRole.id } } }],
         },
       },
+    })
+
+    await client.customer.createMany({
+      data: [
+        { name: 'Acme Corp', email: 'billing@acme.test', company: 'Acme Corp', status: 'ACTIVE', mrrCents: 49900 },
+        { name: 'Globex', email: 'ap@globex.test', company: 'Globex', status: 'ACTIVE', mrrCents: 129900 },
+        { name: 'Initech', email: 'accounts@initech.test', company: 'Initech', status: 'PAST_DUE', mrrCents: 9900 },
+        { name: 'Hooli', email: 'finance@hooli.test', company: 'Hooli', status: 'CANCELED', mrrCents: 0 },
+      ],
     })
   })
 
