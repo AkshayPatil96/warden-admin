@@ -67,6 +67,17 @@ export class NotFoundAppError extends AppError {
   }
 }
 
+export class ConflictAppError extends AppError {
+  constructor(message = 'Resource already exists.') {
+    super({
+      statusCode: 409,
+      code: 'CONFLICT',
+      message,
+    })
+    this.name = 'ConflictAppError'
+  }
+}
+
 export class RateLimitedAppError extends AppError {
   constructor(message = 'Too many requests. Please try again later.') {
     super({

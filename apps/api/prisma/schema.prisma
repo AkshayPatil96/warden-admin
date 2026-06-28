@@ -104,6 +104,7 @@ model Customer {
   status        CustomerStatus @default(ACTIVE)
   mrrCents      Int            @default(0) // monthly recurring revenue, in cents
   subscriptions Subscription[]
+  invoices      Invoice[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -122,12 +123,34 @@ model Subscription {
   priceCents       Int
   currentPeriodEnd DateTime
   canceledAt       DateTime?
+  invoices         Invoice[]
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
   @@index([customerId])
   @@index([status])
   @@map("subscriptions")
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  customerId     String
+  customer       Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  number         String        @unique
+  status         InvoiceStatus @default(DRAFT)
+  amountCents    Int
+  currency       String        @default("usd")
+  dueDate        DateTime
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([customerId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@map("invoices")
 }
 
 model AuditLog {
@@ -171,4 +194,12 @@ enum SubscriptionStatus {
 enum BillingInterval {
   MONTHLY
   YEARLY
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+  UNCOLLECTIBLE
 }

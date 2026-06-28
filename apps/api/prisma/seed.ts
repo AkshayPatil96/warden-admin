@@ -27,6 +27,7 @@ async function main() {
     await client.permission.deleteMany({})
     await client.auditLog.deleteMany({})
     await client.session.deleteMany({})
+    await client.invoice.deleteMany({})
     await client.subscription.deleteMany({})
     await client.customer.deleteMany({})
 
@@ -134,18 +135,20 @@ async function main() {
     const acme = await client.customer.findFirst({ where: { email: 'billing@acme.test' } })
     const globex = await client.customer.findFirst({ where: { email: 'ap@globex.test' } })
     const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    if (acme) {
-      await client.subscription.create({
-        data: {
-          customerId: acme.id,
-          plan: 'PRO',
-          status: 'ACTIVE',
-          interval: 'MONTHLY',
-          priceCents: 49900,
-          currentPeriodEnd: periodEnd,
-        },
-      })
-    }
+    const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+
+    const acmeSub = acme
+      ? await client.subscription.create({
+          data: {
+            customerId: acme.id,
+            plan: 'PRO',
+            status: 'ACTIVE',
+            interval: 'MONTHLY',
+            priceCents: 49900,
+            currentPeriodEnd: periodEnd,
+          },
+        })
+      : null
     if (globex) {
       await client.subscription.create({
         data: {
@@ -155,6 +158,32 @@ async function main() {
           interval: 'YEARLY',
           priceCents: 1299900,
           currentPeriodEnd: periodEnd,
+        },
+      })
+    }
+
+    if (acme) {
+      await client.invoice.create({
+        data: {
+          customerId: acme.id,
+          subscriptionId: acmeSub?.id ?? null,
+          number: 'INV-1001',
+          status: 'PAID',
+          amountCents: 49900,
+          currency: 'usd',
+          dueDate,
+          paidAt: new Date(),
+        },
+      })
+      await client.invoice.create({
+        data: {
+          customerId: acme.id,
+          subscriptionId: acmeSub?.id ?? null,
+          number: 'INV-1002',
+          status: 'OPEN',
+          amountCents: 49900,
+          currency: 'usd',
+          dueDate,
         },
       })
     }
