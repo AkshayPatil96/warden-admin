@@ -1,0 +1,116 @@
+// Prisma schema — RBAC + audit foundation.
+// Run: pnpm --filter @admin/api db:migrate
+
+// New `prisma-client` generator: emits the client into the source tree (../src/generated/prisma)
+// instead of node_modules, and pairs with a driver adapter (@prisma/adapter-pg) at runtime.
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// The CLI reads this url (prisma.config.ts loads the root .env into process.env first);
+// the runtime client connects via the pg driver adapter. Works for local Postgres AND
+// Prisma Postgres.
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String          @id @default(uuid())
+  email            String          @unique
+  passwordHash     String
+  name             String?
+  status           UserStatus      @default(ACTIVE)
+  failedLoginCount Int             @default(0)
+  lockedUntil      DateTime?
+  roles            UserRole[]
+  sessions         Session[]
+  passwordResets   PasswordReset[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique // Admin, Manager, Viewer
+  description String?
+  permissions RolePermission[]
+  users       UserRole[]
+  createdAt   DateTime         @default(now())
+
+  @@map("roles")
+}
+
+model Permission {
+  id    String           @id @default(uuid())
+  key   String           @unique // e.g. "users:read", "orders:write"
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique // sha256 of the raw token; raw token only ever leaves in the email link
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}

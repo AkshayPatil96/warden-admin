@@ -1,0 +1,2 @@
+# Vertical slices per domain: features/<entity>/{components,hooks,api.ts,types.ts}.
+# A new entity = one feature slice here + one api module + its schema in packages/shared.
