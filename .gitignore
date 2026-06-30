@@ -34,3 +34,6 @@ pnpm-debug.log*
 
 # test / coverage
 coverage/
+
+# prisma engine temp files
+apps/api/src/lib/*.node.tmp*

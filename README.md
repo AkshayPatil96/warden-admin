@@ -43,8 +43,7 @@ pnpm install
 # 2. Configure env
 cp .env.example .env
 
-# 3. Start Postgres (Docker) — or point DATABASE_URL at your own
-docker compose up -d postgres
+# 3. Set DATABASE_URL in .env (Prisma Postgres or any reachable Postgres)
 
 # 4. Create the schema + seed demo roles/logins
 pnpm --filter @admin/api db:migrate

@@ -1,7 +1,7 @@
 DC := docker-compose
 
-.PHONY: up down ps shell up-db down-db
-.PHONY: logs logs-api logs-web logs-db
+.PHONY: up down ps shell
+.PHONY: logs logs-api logs-web
 .PHONY: build rebuild build-api rebuild-api build-web rebuild-web build-all rebuild-all
 .PHONY: migrate migrate-deploy seed reset studio
 .PHONY: dev dev-api dev-web
@@ -12,12 +12,6 @@ up:
 
 down:
 	$(DC) down
-
-up-db:
-	$(DC) up -d postgres
-
-down-db:
-	$(DC) stop postgres
 
 ps:
 	$(DC) ps
@@ -30,9 +24,6 @@ logs-api:
 
 logs-web:
 	$(DC) logs -f web
-
-logs-db:
-	$(DC) logs -f postgres
 
 shell:
 	$(DC) exec api sh
@@ -61,7 +52,7 @@ build-all:
 rebuild-all:
 	$(DC) up -d --build
 
-# Local hot-reload workflow (keep only Postgres in Docker).
+# Local hot-reload workflow.
 dev:
 	pnpm dev
 
@@ -72,21 +63,23 @@ dev-web:
 	pnpm --filter @admin/web dev
 
 migrate:
-	$(DC) exec api pnpm db:migrate
+	pnpm --filter @admin/api db:migrate
+
+generate:
+	pnpm --filter @admin/api db:generate
 
 migrate-deploy:
-	$(DC) exec api pnpm db:deploy
+	pnpm --filter @admin/api db:deploy
 
 seed:
-	$(DC) exec api pnpm db:seed
+	pnpm --filter @admin/api db:seed
 
 reset:
-	$(DC) exec api sh -lc "pnpm prisma migrate reset --force"
+	pnpm --filter @admin/api db:reset
 
 # Run Prisma Studio from host workspace for easier browser access.
 studio:
-# 	pnpm --filter @admin/api db:studio
-	$(DC) exec api sh -lc "pnpm prisma studio"
+	pnpm --filter @admin/api db:studio
 
 lint:
 	pnpm lint
