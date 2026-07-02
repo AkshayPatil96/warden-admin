@@ -27,7 +27,7 @@ export const navItems: NavItem[] = [
   { label: 'Customers', href: '/customers', icon: Users, permission: 'billing:read', soon: true },
   { label: 'Subscriptions', href: '/subscriptions', icon: CreditCard, permission: 'billing:read', soon: true },
   { label: 'Invoices', href: '/invoices', icon: Receipt, permission: 'billing:read', soon: true },
-  { label: 'Users & Roles', href: '/users', icon: UserCog, permission: 'users:write', soon: true },
+  { label: 'Users & Roles', href: '/users', icon: UserCog, permission: 'users:write' },
   { label: 'Audit Log', href: '/audit', icon: ScrollText, permission: 'audit:read', soon: true },
   { label: 'Settings', href: '/settings', icon: Settings, permission: 'settings:read', soon: true },
 ]

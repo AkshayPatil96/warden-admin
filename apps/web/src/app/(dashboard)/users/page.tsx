@@ -1,4 +1,18 @@
-// User & role management. Compose the users feature table here.
+import type { Metadata } from 'next'
+import { UsersTable } from '@/features/users/components/users-table'
+
+export const metadata: Metadata = { title: 'Users & Roles · Warden Admin' }
+
 export default function UsersPage() {
-  return <div className="text-muted-foreground">TODO: users table</div>
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Users &amp; Roles</h1>
+        <p className="text-sm text-muted-foreground">
+          Manage accounts, assign roles, and control access. Every change is audited.
+        </p>
+      </div>
+      <UsersTable />
+    </div>
+  )
 }
