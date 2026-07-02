@@ -5,6 +5,7 @@ import { subscriptionRouter } from './subscription/subscription.routes.js'
 import { invoiceRouter } from './invoice/invoice.routes.js'
 import { userRouter } from './users/users.routes.js'
 import { roleRouter } from './roles/roles.routes.js'
+import { analyticsRouter } from './analytics/analytics.routes.js'
 
 export const apiV1Router: Router = Router()
 
@@ -14,3 +15,4 @@ apiV1Router.use('/subscriptions', subscriptionRouter)
 apiV1Router.use('/invoices', invoiceRouter)
 apiV1Router.use('/users', userRouter)
 apiV1Router.use('/roles', roleRouter)
+apiV1Router.use('/analytics', analyticsRouter)
