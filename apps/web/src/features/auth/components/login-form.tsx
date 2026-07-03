@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { FormField } from '@/components/ui/form-field'
 import { Alert } from '@/components/ui/alert'
 import { ApiError } from '@/lib/api-client'
+import { safeInternalPath } from '@/lib/safe-redirect'
 import { useLogin } from '../hooks'
 
 type FieldErrors = Partial<Record<'email' | 'password', string>>
@@ -41,11 +42,7 @@ export function LoginForm() {
 
     login.mutate(parsed.data, {
       onSuccess: () => {
-        // Only follow an internal path. Reject protocol-relative ("//evil.com")
-        // and backslash ("/\\evil.com") forms that browsers treat as absolute —
-        // otherwise ?next= is an open redirect.
-        const next = params.get('next')
-        router.replace(next && /^\/(?![/\\])/.test(next) ? next : '/')
+        router.replace(safeInternalPath(params.get('next')))
       },
       onError: (err) => {
         // 401 here means bad credentials; the API returns a generic message by design.

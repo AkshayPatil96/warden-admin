@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -16,16 +16,23 @@ interface DialogProps {
 // Minimal modal: scrim + centered panel, Esc to close, scroll-locked.
 // ponytail: hand-rolled instead of pulling in Radix for one dialog.
 export function Dialog({ open, onClose, title, description, children, className }: DialogProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!open) return
+    // Move focus into the dialog on open and restore it to the trigger on close.
+    // ponytail: focus-in + restore, not a full focus trap — enough for these forms.
+    const previouslyFocused = document.activeElement as HTMLElement | null
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
+    panelRef.current?.focus()
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = ''
+      previouslyFocused?.focus?.()
     }
   }, [open, onClose])
 
@@ -35,10 +42,13 @@ export function Dialog({ open, onClose, title, description, children, className 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-foreground/50" onClick={onClose} aria-hidden />
       <div
+        ref={panelRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className={cn(
+          'focus:outline-none',
           'relative z-10 w-full max-w-lg rounded-xl border border-border bg-card shadow-lg',
           'max-h-[90vh] overflow-y-auto',
           className
