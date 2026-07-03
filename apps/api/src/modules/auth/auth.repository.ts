@@ -123,6 +123,27 @@ export async function findPasswordHashById(userId: string, client: DbClient = pr
 	return user?.passwordHash ?? null
 }
 
+export async function listSessionsForUser(
+	userId: string,
+	client: DbClient = prisma
+): Promise<Array<{ id: string; createdAt: Date; expiresAt: Date }>> {
+	return client.session.findMany({
+		where: { userId, expiresAt: { gt: new Date() } },
+		select: { id: true, createdAt: true, expiresAt: true },
+		orderBy: { createdAt: 'desc' },
+	})
+}
+
+// Deletes only if the session belongs to the user — an actor can't revoke someone else's.
+export async function deleteSessionForUser(
+	userId: string,
+	sessionId: string,
+	client: DbClient = prisma
+): Promise<boolean> {
+	const result = await client.session.deleteMany({ where: { id: sessionId, userId } })
+	return result.count > 0
+}
+
 export async function updateName(userId: string, name: string, client: DbClient = prisma): Promise<void> {
 	await client.user.update({ where: { id: userId }, data: { name } })
 }

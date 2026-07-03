@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { ProfileForm } from '@/features/settings/components/profile-form'
 import { PasswordForm } from '@/features/settings/components/password-form'
+import { ActiveSessions } from '@/features/settings/components/active-sessions'
 import { AppearanceSection } from '@/features/settings/components/appearance-section'
 
 export const metadata: Metadata = { title: 'Settings · Warden Admin' }
@@ -15,6 +16,7 @@ export default function SettingsPage() {
       <div className="grid max-w-2xl gap-6">
         <ProfileForm />
         <PasswordForm />
+        <ActiveSessions />
         <AppearanceSection />
       </div>
     </div>

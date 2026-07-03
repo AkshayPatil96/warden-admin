@@ -42,3 +42,17 @@ export const changePasswordSchema = z.object({
 })
 
 export type ChangePasswordRequest = z.infer<typeof changePasswordSchema>
+
+// Active sessions (self-service). `current` marks the session making the request.
+export interface SessionSummary {
+  id: string
+  createdAt: string
+  expiresAt: string
+  current: boolean
+}
+
+export const revokeSessionSchema = z.object({
+  id: z.string().uuid(),
+})
+
+export type RevokeSessionRequest = z.infer<typeof revokeSessionSchema>

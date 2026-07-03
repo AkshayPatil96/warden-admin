@@ -10,10 +10,12 @@ import { createSession, resolveSession, revokeSession } from '../../lib/session.
 import {
 	consumePasswordReset,
 	createPasswordReset,
+	deleteSessionForUser,
 	findPasswordHashById,
 	findUserForLogin,
 	findUserForSession,
 	findValidPasswordReset,
+	listSessionsForUser,
 	recordFailedLogin,
 	resetLoginFailures,
 	revokeAllSessionsForUser,
@@ -22,6 +24,8 @@ import {
 	updatePasswordHash,
 } from './auth.repository.js'
 import type { AuthenticatedUser, LoginResult } from './auth.types.js'
+import type { SessionSummary } from '@admin/shared'
+import { NotFoundAppError } from '../../core/errors/app-error.js'
 
 function hashToken(rawToken: string): string {
 	// Reset tokens are 256-bit random values, so a fast hash is sufficient here —
@@ -259,4 +263,48 @@ export async function changePassword(
 			client
 		)
 	})
+}
+
+export async function listSessions(actor: AuthenticatedUser, currentSessionId: string): Promise<SessionSummary[]> {
+	const sessions = await listSessionsForUser(actor.id)
+	return sessions.map((s) => ({
+		id: s.id,
+		createdAt: s.createdAt.toISOString(),
+		expiresAt: s.expiresAt.toISOString(),
+		current: s.id === currentSessionId,
+	}))
+}
+
+export async function revokeSessionById(
+	actor: AuthenticatedUser,
+	currentSessionId: string,
+	targetSessionId: string
+): Promise<void> {
+	if (targetSessionId === currentSessionId) {
+		throw new ValidationAppError('Use sign out to end your current session.')
+	}
+	const revoked = await deleteSessionForUser(actor.id, targetSessionId)
+	if (!revoked) {
+		throw new NotFoundAppError('Session not found.')
+	}
+	await writeAudit({
+		actorId: actor.id,
+		action: 'auth.session_revoked',
+		entity: 'session',
+		entityId: targetSessionId,
+	})
+}
+
+export async function revokeOtherSessions(actor: AuthenticatedUser, currentSessionId: string): Promise<number> {
+	const count = await revokeOtherSessionsForUser(actor.id, currentSessionId)
+	if (count > 0) {
+		await writeAudit({
+			actorId: actor.id,
+			action: 'auth.sessions_revoked_others',
+			entity: 'session',
+			entityId: currentSessionId,
+			after: { revokedCount: count },
+		})
+	}
+	return count
 }

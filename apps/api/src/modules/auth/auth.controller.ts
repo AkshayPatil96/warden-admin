@@ -7,6 +7,7 @@ import type {
 	ForgotPasswordRequest,
 	LoginRequest,
 	ResetPasswordRequest,
+	RevokeSessionRequest,
 	UpdateProfileRequest,
 } from '@admin/shared'
 
@@ -51,6 +52,30 @@ export const changePassword: RequestHandler = async (req, res) => {
 	const body = req.body as ChangePasswordRequest
 	await authService.changePassword(req.user, req.sessionId, body.currentPassword, body.newPassword)
 	res.status(204).send()
+}
+
+export const listSessions: RequestHandler = async (req, res) => {
+	if (!req.user || !req.sessionId) {
+		throw new UnauthorizedAppError()
+	}
+	res.status(200).json(await authService.listSessions(req.user, req.sessionId))
+}
+
+export const revokeSession: RequestHandler = async (req, res) => {
+	if (!req.user || !req.sessionId) {
+		throw new UnauthorizedAppError()
+	}
+	const body = req.body as RevokeSessionRequest
+	await authService.revokeSessionById(req.user, req.sessionId, body.id)
+	res.status(204).send()
+}
+
+export const revokeOtherSessions: RequestHandler = async (req, res) => {
+	if (!req.user || !req.sessionId) {
+		throw new UnauthorizedAppError()
+	}
+	const count = await authService.revokeOtherSessions(req.user, req.sessionId)
+	res.status(200).json({ revoked: count })
 }
 
 // Always 204 — never reveal whether the email maps to an account.

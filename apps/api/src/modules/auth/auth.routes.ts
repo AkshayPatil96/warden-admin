@@ -8,6 +8,7 @@ import {
 	forgotPasswordSchema,
 	loginRequestSchema,
 	resetPasswordSchema,
+	revokeSessionSchema,
 	updateProfileSchema,
 } from '@admin/shared'
 import { writeLimiter } from '../../middleware/rate-limit.js'
@@ -29,5 +30,9 @@ authRouter.post(
 	validate(changePasswordSchema),
 	asyncHandler(controller.changePassword)
 )
+
+authRouter.get('/sessions', authenticate, asyncHandler(controller.listSessions))
+authRouter.post('/sessions/revoke', authenticate, validate(revokeSessionSchema), asyncHandler(controller.revokeSession))
+authRouter.post('/sessions/revoke-others', authenticate, asyncHandler(controller.revokeOtherSessions))
 authRouter.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), asyncHandler(controller.forgotPassword))
 authRouter.post('/reset-password', authLimiter, validate(resetPasswordSchema), asyncHandler(controller.resetPassword))
