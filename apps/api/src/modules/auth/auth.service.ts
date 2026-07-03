@@ -10,11 +10,15 @@ import { createSession, resolveSession, revokeSession } from '../../lib/session.
 import {
 	consumePasswordReset,
 	createPasswordReset,
+	findPasswordHashById,
 	findUserForLogin,
+	findUserForSession,
 	findValidPasswordReset,
 	recordFailedLogin,
 	resetLoginFailures,
 	revokeAllSessionsForUser,
+	revokeOtherSessionsForUser,
+	updateName,
 	updatePasswordHash,
 } from './auth.repository.js'
 import type { AuthenticatedUser, LoginResult } from './auth.types.js'
@@ -190,4 +194,69 @@ export async function currentUser(sessionId: string): Promise<AuthenticatedUser>
 	}
 
 	return session.user
+}
+
+// Self-service: update the caller's own display name. Returns the refreshed
+// AuthenticatedUser (permissions unchanged) so the client can update its cache.
+export async function updateProfile(actor: AuthenticatedUser, name: string): Promise<AuthenticatedUser> {
+	await prisma.$transaction(async (client: Prisma.TransactionClient) => {
+		await updateName(actor.id, name, client)
+		await writeAudit(
+			{
+				actorId: actor.id,
+				action: 'user.update',
+				entity: 'user',
+				entityId: actor.id,
+				before: { name: actor.name },
+				after: { name },
+			},
+			client
+		)
+	})
+
+	const refreshed = await findUserForSession(actor.id)
+	if (!refreshed) {
+		throw new UnauthorizedAppError()
+	}
+	return { id: refreshed.id, email: refreshed.email, name: refreshed.name, permissions: refreshed.permissions }
+}
+
+// Self-service password change. Verifies the current password, then updates the
+// hash and signs out every OTHER session (this one stays valid).
+export async function changePassword(
+	actor: AuthenticatedUser,
+	currentSessionId: string,
+	currentPassword: string,
+	newPassword: string
+): Promise<void> {
+	const currentHash = await findPasswordHashById(actor.id)
+	if (!currentHash) {
+		throw new UnauthorizedAppError()
+	}
+
+	const matches = await verifyPassword(currentHash, currentPassword)
+	if (!matches) {
+		throw new ValidationAppError('Current password is incorrect.')
+	}
+	if (await verifyPassword(currentHash, newPassword)) {
+		throw new ValidationAppError('New password must be different from the current one.')
+	}
+
+	// Hash outside the transaction — argon2 is intentionally slow.
+	const passwordHash = await hashPassword(newPassword)
+
+	await prisma.$transaction(async (client: Prisma.TransactionClient) => {
+		await updatePasswordHash(actor.id, passwordHash, client)
+		await resetLoginFailures(actor.id, client)
+		await revokeOtherSessionsForUser(actor.id, currentSessionId, client)
+		await writeAudit(
+			{
+				actorId: actor.id,
+				action: 'auth.password_change',
+				entity: 'user',
+				entityId: actor.id,
+			},
+			client
+		)
+	})
 }

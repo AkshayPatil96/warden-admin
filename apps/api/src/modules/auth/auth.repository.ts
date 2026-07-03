@@ -107,6 +107,26 @@ export async function revokeAllSessionsForUser(userId: string, client: DbClient 
 	return result.count
 }
 
+// Revoke every session except the one making the change (so a self password change
+// signs out other devices without logging the current one out).
+export async function revokeOtherSessionsForUser(
+	userId: string,
+	keepSessionId: string,
+	client: DbClient = prisma
+): Promise<number> {
+	const result = await client.session.deleteMany({ where: { userId, id: { not: keepSessionId } } })
+	return result.count
+}
+
+export async function findPasswordHashById(userId: string, client: DbClient = prisma): Promise<string | null> {
+	const user = await client.user.findUnique({ where: { id: userId }, select: { passwordHash: true } })
+	return user?.passwordHash ?? null
+}
+
+export async function updateName(userId: string, name: string, client: DbClient = prisma): Promise<void> {
+	await client.user.update({ where: { id: userId }, data: { name } })
+}
+
 export async function createPasswordReset(
 	userId: string,
 	tokenHash: string,

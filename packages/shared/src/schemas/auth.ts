@@ -28,3 +28,17 @@ export const resetPasswordSchema = z.object({
 })
 
 export type ResetPasswordRequest = z.infer<typeof resetPasswordSchema>
+
+// Self-service account settings (any authenticated user, on their own account).
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required.').max(120, 'Name is too long.'),
+})
+
+export type UpdateProfileRequest = z.infer<typeof updateProfileSchema>
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required.'),
+  newPassword: strongPasswordSchema,
+})
+
+export type ChangePasswordRequest = z.infer<typeof changePasswordSchema>

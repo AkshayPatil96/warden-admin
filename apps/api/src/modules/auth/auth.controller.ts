@@ -2,7 +2,13 @@ import type { RequestHandler } from 'express'
 import { UnauthorizedAppError } from '../../core/errors/app-error.js'
 import { clearSessionCookie, setSessionCookie } from '../../lib/session.js'
 import * as authService from './auth.service.js'
-import type { ForgotPasswordRequest, LoginRequest, ResetPasswordRequest } from '@admin/shared'
+import type {
+	ChangePasswordRequest,
+	ForgotPasswordRequest,
+	LoginRequest,
+	ResetPasswordRequest,
+	UpdateProfileRequest,
+} from '@admin/shared'
 
 export const login: RequestHandler = async (req, res) => {
   const body = req.body as LoginRequest
@@ -27,6 +33,24 @@ export const me: RequestHandler = async (req, res) => {
   }
 
   res.status(200).json(req.user)
+}
+
+export const updateProfile: RequestHandler = async (req, res) => {
+	if (!req.user) {
+		throw new UnauthorizedAppError()
+	}
+	const body = req.body as UpdateProfileRequest
+	const updated = await authService.updateProfile(req.user, body.name)
+	res.status(200).json(updated)
+}
+
+export const changePassword: RequestHandler = async (req, res) => {
+	if (!req.user || !req.sessionId) {
+		throw new UnauthorizedAppError()
+	}
+	const body = req.body as ChangePasswordRequest
+	await authService.changePassword(req.user, req.sessionId, body.currentPassword, body.newPassword)
+	res.status(204).send()
 }
 
 // Always 204 — never reveal whether the email maps to an account.

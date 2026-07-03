@@ -29,5 +29,6 @@ export const navItems: NavItem[] = [
   { label: 'Invoices', href: '/invoices', icon: Receipt, permission: 'billing:read' },
   { label: 'Users & Roles', href: '/users', icon: UserCog, permission: 'users:write' },
   { label: 'Audit Log', href: '/audit', icon: ScrollText, permission: 'audit:read' },
-  { label: 'Settings', href: '/settings', icon: Settings, permission: 'settings:read', soon: true },
+  // Self-service (profile / password / appearance) — every signed-in user, no gate.
+  { label: 'Settings', href: '/settings', icon: Settings },
 ]
