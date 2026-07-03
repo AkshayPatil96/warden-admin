@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select'
 import { FormField } from '@/components/ui/form-field'
 import { Alert } from '@/components/ui/alert'
 import { centsFromAmount, amountFromCents } from '@/lib/format'
+import { useToast } from '@/components/ui/toast'
 import { useCreateCustomer, useUpdateCustomer } from '../hooks'
 import type { Customer, CustomerStatus } from '../types'
 
@@ -21,6 +22,7 @@ interface Props {
 const STATUSES: CustomerStatus[] = ['ACTIVE', 'PAST_DUE', 'CANCELED']
 
 export function CustomerFormDialog({ open, onClose, customer }: Props) {
+  const toast = useToast()
   const isEdit = Boolean(customer)
   const createCustomer = useCreateCustomer()
   const updateCustomer = useUpdateCustomer()
@@ -55,7 +57,13 @@ export function CustomerFormDialog({ open, onClose, customer }: Props) {
     }
     setErrors({})
 
-    const onDone = { onSuccess: onClose, onError: (err: unknown) => setFormError(errMsg(err)) }
+    const onDone = {
+      onSuccess: () => {
+        toast.success(isEdit ? 'Customer updated' : 'Customer created', name)
+        onClose()
+      },
+      onError: (err: unknown) => setFormError(errMsg(err)),
+    }
     if (isEdit && customer) {
       updateCustomer.mutate({ id: customer.id, body: parsed.data }, onDone)
     } else {

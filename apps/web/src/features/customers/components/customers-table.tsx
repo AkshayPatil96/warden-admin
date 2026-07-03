@@ -3,14 +3,18 @@
 import { useState } from 'react'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { hasPermission } from '@/lib/auth'
-import { formatDate, formatMoney } from '@/lib/format'
+import { amountFromCents, formatDate, formatMoney } from '@/lib/format'
+import { downloadCsv } from '@/lib/csv'
+import { useRowSelection } from '@/lib/use-row-selection'
 import { useMe } from '@/features/auth/hooks'
-import { DataTable, type Column } from '@/components/data-table/data-table'
+import { DataTable, type BulkAction, type Column } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useToast } from '@/components/ui/toast'
+import { customersApi } from '../api'
 import { useCustomers, useDeleteCustomer } from '../hooks'
 import type { Customer, CustomerStatus, ListCustomersQuery } from '../types'
 import { CustomerFormDialog } from './customer-form-dialog'
@@ -22,6 +26,7 @@ const statusVariant: Record<CustomerStatus, BadgeProps['variant']> = {
 }
 
 export function CustomersTable() {
+  const toast = useToast()
   const { data: me } = useMe()
   const canWrite = me ? hasPermission(me.permissions, 'billing:write') : false
   const canDelete = me ? hasPermission(me.permissions, 'billing:delete') : false
@@ -37,7 +42,11 @@ export function CustomersTable() {
   const [editing, setEditing] = useState<Customer | undefined>(undefined)
   const [deleting, setDeleting] = useState<Customer | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [bulkIds, setBulkIds] = useState<string[] | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
+  const selection = useRowSelection()
   const { data, isLoading, isError, isFetching, refetch } = useCustomers(query)
   const deleteCustomer = useDeleteCustomer()
 
@@ -53,29 +62,58 @@ export function CustomersTable() {
     if (!deleting) return
     setDeleteError(null)
     deleteCustomer.mutate(deleting.id, {
-      onSuccess: () => setDeleting(null),
+      onSuccess: () => {
+        toast.success('Customer deleted', deleting.name)
+        setDeleting(null)
+      },
       onError: (err) => setDeleteError(err instanceof Error ? err.message : 'Could not delete this customer.'),
     })
   }
 
+  const confirmBulkDelete = async () => {
+    if (!bulkIds) return
+    setBulkBusy(true)
+    const results = await Promise.allSettled(bulkIds.map((id) => deleteCustomer.mutateAsync(id)))
+    const ok = results.filter((r) => r.status === 'fulfilled').length
+    const failed = results.length - ok
+    setBulkBusy(false)
+    setBulkIds(null)
+    selection.clear()
+    if (failed === 0) toast.success('Deleted', `${ok} customer${ok === 1 ? '' : 's'} deleted.`)
+    else toast.error('Partly failed', `${ok} deleted, ${failed} failed.`)
+  }
+
+  const onExportCsv = async () => {
+    setExporting(true)
+    try {
+      const all = await customersApi.list({ ...query, page: 1, pageSize: 1000 })
+      downloadCsv(
+        'customers.csv',
+        ['Name', 'Email', 'Company', 'Status', 'MRR', 'Created'],
+        all.data.map((c) => [c.name, c.email, c.company ?? '', c.status, amountFromCents(c.mrrCents), c.createdAt])
+      )
+      toast.success('Export ready', `${all.data.length} customers exported.`)
+    } catch {
+      toast.error('Export failed', 'Could not export customers.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const bulkActions: BulkAction[] | undefined = canDelete
+    ? [{ label: 'Delete', icon: Trash2, destructive: true, loading: bulkBusy, onClick: (ids) => setBulkIds(ids) }]
+    : undefined
+
   const columns: Column<Customer>[] = [
     { key: 'name', header: 'Name', render: (c) => <span className="font-medium">{c.name}</span> },
     { key: 'email', header: 'Email', render: (c) => <span className="text-muted-foreground">{c.email}</span> },
-    {
-      header: 'Company',
-      render: (c) => <span className="text-muted-foreground">{c.company ?? '—'}</span>,
-    },
+    { header: 'Company', render: (c) => <span className="text-muted-foreground">{c.company ?? '—'}</span> },
     {
       key: 'status',
       header: 'Status',
       render: (c) => <Badge variant={statusVariant[c.status]}>{c.status.replace('_', ' ')}</Badge>,
     },
-    {
-      key: 'mrrCents',
-      header: 'MRR',
-      className: 'text-right tabular-nums',
-      render: (c) => formatMoney(c.mrrCents),
-    },
+    { key: 'mrrCents', header: 'MRR', className: 'text-right tabular-nums', render: (c) => formatMoney(c.mrrCents) },
     {
       key: 'createdAt',
       header: 'Created',
@@ -173,15 +211,15 @@ export function CustomersTable() {
         rowKey={(c) => c.id}
         emptyMessage="No customers match your filters."
         toolbar={toolbar}
+        selection={canDelete ? selection : undefined}
+        bulkActions={bulkActions}
+        enableColumnVisibility
+        onExportCsv={onExportCsv}
+        exporting={exporting}
       />
 
       {formOpen && (
-        <CustomerFormDialog
-          key={editing?.id ?? 'new'}
-          open
-          onClose={() => setFormOpen(false)}
-          customer={editing}
-        />
+        <CustomerFormDialog key={editing?.id ?? 'new'} open onClose={() => setFormOpen(false)} customer={editing} />
       )}
       <ConfirmDialog
         open={Boolean(deleting)}
@@ -193,13 +231,21 @@ export function CustomersTable() {
         title="Delete customer"
         description={
           <>
-            Delete <span className="font-medium text-foreground">{deleting?.name}</span>? This cannot be
-            undone.
+            Delete <span className="font-medium text-foreground">{deleting?.name}</span>? This cannot be undone.
           </>
         }
         confirmLabel="Delete customer"
         loading={deleteCustomer.isPending}
         error={deleteError}
+      />
+      <ConfirmDialog
+        open={Boolean(bulkIds)}
+        onClose={() => setBulkIds(null)}
+        onConfirm={confirmBulkDelete}
+        title="Delete customers"
+        description={`Delete ${bulkIds?.length ?? 0} selected customer${bulkIds?.length === 1 ? '' : 's'}? This cannot be undone.`}
+        confirmLabel="Delete"
+        loading={bulkBusy}
       />
     </>
   )
