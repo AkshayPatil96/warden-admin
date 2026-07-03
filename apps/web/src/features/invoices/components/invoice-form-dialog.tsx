@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select'
 import { FormField } from '@/components/ui/form-field'
 import { Alert } from '@/components/ui/alert'
 import { centsFromAmount, amountFromCents } from '@/lib/format'
+import { useToast } from '@/components/ui/toast'
 import { useCustomerOptions } from '@/features/customers/hooks'
 import { useSubscriptionOptions } from '@/features/subscriptions/hooks'
 import { useCreateInvoice, useUpdateInvoice } from '../hooks'
@@ -25,6 +26,7 @@ const title = (s: string) => s.charAt(0) + s.slice(1).toLowerCase()
 const defaultDueDate = () => new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10)
 
 export function InvoiceFormDialog({ open, onClose, invoice }: Props) {
+  const toast = useToast()
   const isEdit = Boolean(invoice)
   const customers = useCustomerOptions()
   const createInvoice = useCreateInvoice()
@@ -57,7 +59,13 @@ export function InvoiceFormDialog({ open, onClose, invoice }: Props) {
       dueDate,
     }
     if (subscriptionId) base.subscriptionId = subscriptionId
-    const onDone = { onSuccess: onClose, onError: (err: unknown) => setFormError(errMsg(err)) }
+    const onDone = {
+      onSuccess: () => {
+        toast.success(isEdit ? 'Invoice updated' : 'Invoice created')
+        onClose()
+      },
+      onError: (err: unknown) => setFormError(errMsg(err)),
+    }
 
     if (isEdit && invoice) {
       const parsed = updateInvoiceSchema.safeParse(base)

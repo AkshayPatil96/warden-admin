@@ -3,14 +3,18 @@
 import { useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { hasPermission } from '@/lib/auth'
-import { formatDate, formatMoney } from '@/lib/format'
+import { amountFromCents, formatDate, formatMoney } from '@/lib/format'
+import { downloadCsv } from '@/lib/csv'
+import { useRowSelection } from '@/lib/use-row-selection'
 import { useMe } from '@/features/auth/hooks'
 import { useCustomerOptions } from '@/features/customers/hooks'
-import { DataTable, type Column } from '@/components/data-table/data-table'
+import { DataTable, type BulkAction, type Column } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useToast } from '@/components/ui/toast'
+import { subscriptionsApi } from '../api'
 import { useDeleteSubscription, useSubscriptions } from '../hooks'
 import type { ListSubscriptionsQuery, Subscription, SubscriptionStatus } from '../types'
 import { SubscriptionFormDialog } from './subscription-form-dialog'
@@ -25,6 +29,7 @@ const statusVariant: Record<SubscriptionStatus, BadgeProps['variant']> = {
 const title = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace('_', ' ')
 
 export function SubscriptionsTable() {
+  const toast = useToast()
   const { data: me } = useMe()
   const canWrite = me ? hasPermission(me.permissions, 'billing:write') : false
   const canDelete = me ? hasPermission(me.permissions, 'billing:delete') : false
@@ -42,7 +47,11 @@ export function SubscriptionsTable() {
   const [editing, setEditing] = useState<Subscription | undefined>(undefined)
   const [deleting, setDeleting] = useState<Subscription | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [bulkIds, setBulkIds] = useState<string[] | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
+  const selection = useRowSelection()
   const { data, isLoading, isError, isFetching, refetch } = useSubscriptions(query)
   const deleteSub = useDeleteSubscription()
 
@@ -53,10 +62,54 @@ export function SubscriptionsTable() {
     if (!deleting) return
     setDeleteError(null)
     deleteSub.mutate(deleting.id, {
-      onSuccess: () => setDeleting(null),
+      onSuccess: () => {
+        toast.success('Subscription deleted')
+        setDeleting(null)
+      },
       onError: (err) => setDeleteError(err instanceof Error ? err.message : 'Could not delete this subscription.'),
     })
   }
+
+  const confirmBulkDelete = async () => {
+    if (!bulkIds) return
+    setBulkBusy(true)
+    const results = await Promise.allSettled(bulkIds.map((id) => deleteSub.mutateAsync(id)))
+    const ok = results.filter((r) => r.status === 'fulfilled').length
+    const failed = results.length - ok
+    setBulkBusy(false)
+    setBulkIds(null)
+    selection.clear()
+    if (failed === 0) toast.success('Deleted', `${ok} subscription${ok === 1 ? '' : 's'} deleted.`)
+    else toast.error('Partly failed', `${ok} deleted, ${failed} failed.`)
+  }
+
+  const onExportCsv = async () => {
+    setExporting(true)
+    try {
+      const all = await subscriptionsApi.list({ ...query, page: 1, pageSize: 1000 })
+      downloadCsv(
+        'subscriptions.csv',
+        ['Customer', 'Plan', 'Status', 'Interval', 'Price', 'Period end'],
+        all.data.map((s) => [
+          customerName(s.customerId),
+          s.plan,
+          s.status,
+          s.interval,
+          amountFromCents(s.priceCents),
+          s.currentPeriodEnd,
+        ])
+      )
+      toast.success('Export ready', `${all.data.length} subscriptions exported.`)
+    } catch {
+      toast.error('Export failed', 'Could not export subscriptions.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const bulkActions: BulkAction[] | undefined = canDelete
+    ? [{ label: 'Delete', icon: Trash2, destructive: true, loading: bulkBusy, onClick: (ids) => setBulkIds(ids) }]
+    : undefined
 
   const columns: Column<Subscription>[] = [
     { header: 'Customer', render: (s) => <span className="font-medium">{customerName(s.customerId)}</span> },
@@ -117,9 +170,7 @@ export function SubscriptionsTable() {
           aria-label="Filter by customer"
           className="sm:w-56"
           value={query.customerId ?? ''}
-          onChange={(e) =>
-            setQuery((q) => ({ ...q, page: 1, customerId: e.target.value || undefined }))
-          }
+          onChange={(e) => setQuery((q) => ({ ...q, page: 1, customerId: e.target.value || undefined }))}
         >
           <option value="">All customers</option>
           {customers.data?.data.map((c) => (
@@ -188,6 +239,11 @@ export function SubscriptionsTable() {
         rowKey={(s) => s.id}
         emptyMessage="No subscriptions match your filters."
         toolbar={toolbar}
+        selection={canDelete ? selection : undefined}
+        bulkActions={bulkActions}
+        enableColumnVisibility
+        onExportCsv={onExportCsv}
+        exporting={exporting}
       />
 
       {formOpen && (
@@ -210,6 +266,15 @@ export function SubscriptionsTable() {
         confirmLabel="Delete subscription"
         loading={deleteSub.isPending}
         error={deleteError}
+      />
+      <ConfirmDialog
+        open={Boolean(bulkIds)}
+        onClose={() => setBulkIds(null)}
+        onConfirm={confirmBulkDelete}
+        title="Delete subscriptions"
+        description={`Delete ${bulkIds?.length ?? 0} selected subscription${bulkIds?.length === 1 ? '' : 's'}? This cannot be undone.`}
+        confirmLabel="Delete"
+        loading={bulkBusy}
       />
     </>
   )

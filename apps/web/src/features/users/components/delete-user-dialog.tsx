@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Dialog } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Alert } from '@/components/ui/alert'
+import { useToast } from '@/components/ui/toast'
 import { useDeleteUser } from '../hooks'
 import type { User } from '../types'
 
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function DeleteUserDialog({ user, onClose }: Props) {
+  const toast = useToast()
   const deleteUser = useDeleteUser()
   const [error, setError] = useState<string | null>(null)
 
@@ -20,7 +22,10 @@ export function DeleteUserDialog({ user, onClose }: Props) {
     if (!user) return
     setError(null)
     deleteUser.mutate(user.id, {
-      onSuccess: onClose,
+      onSuccess: () => {
+        toast.success('User deleted', user.name ?? user.email)
+        onClose()
+      },
       // Server guards (last Admin, self) surface as a 403 message here.
       onError: (err) => setError(err instanceof Error ? err.message : 'Could not delete this user.'),
     })

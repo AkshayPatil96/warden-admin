@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select'
 import { FormField } from '@/components/ui/form-field'
 import { Alert } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useToast } from '@/components/ui/toast'
 import { useCreateUser, useRoles, useUpdateUser } from '../hooks'
 import type { User } from '../types'
 
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function UserFormDialog({ open, onClose, user }: Props) {
+  const toast = useToast()
   const isEdit = Boolean(user)
   const rolesQuery = useRoles()
   const createUser = useCreateUser()
@@ -50,7 +52,13 @@ export function UserFormDialog({ open, onClose, user }: Props) {
       }
       updateUser.mutate(
         { id: user.id, body: parsed.data },
-        { onSuccess: onClose, onError: (err) => setFormError(errMsg(err)) }
+        {
+          onSuccess: () => {
+            toast.success('User updated', email)
+            onClose()
+          },
+          onError: (err) => setFormError(errMsg(err)),
+        }
       )
       return
     }
@@ -66,7 +74,13 @@ export function UserFormDialog({ open, onClose, user }: Props) {
       setErrors({ email: f.email?.[0], password: f.password?.[0], roleIds: f.roleIds?.[0] })
       return
     }
-    createUser.mutate(parsed.data, { onSuccess: onClose, onError: (err) => setFormError(errMsg(err)) })
+    createUser.mutate(parsed.data, {
+      onSuccess: () => {
+        toast.success('User created', email)
+        onClose()
+      },
+      onError: (err) => setFormError(errMsg(err)),
+    })
   }
 
   return (

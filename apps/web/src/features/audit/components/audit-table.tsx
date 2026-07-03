@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { useToast } from '@/components/ui/toast'
+import { downloadCsv } from '@/lib/csv'
 import { useAuditLogs } from '../hooks'
-import type { AuditQuery } from '../api'
+import { auditApi, type AuditQuery } from '../api'
 import { AuditDetailDialog } from './audit-detail-dialog'
 
 const dateTimeFmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
@@ -18,11 +20,36 @@ const dateTimeFmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', ti
 const ENTITIES = ['user', 'session', 'customer', 'subscription', 'invoice']
 
 export function AuditTable() {
+  const toast = useToast()
   const [query, setQuery] = useState<AuditQuery>({ page: 1, pageSize: 15, sort: 'createdAt', order: 'desc' })
   const [searchInput, setSearchInput] = useState('')
   const [detail, setDetail] = useState<AuditLog | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const { data, isLoading, isError, isFetching, refetch } = useAuditLogs(query)
+
+  const onExportCsv = async () => {
+    setExporting(true)
+    try {
+      const all = await auditApi.list({ ...query, page: 1, pageSize: 1000 })
+      downloadCsv(
+        'audit-log.csv',
+        ['Time', 'Actor', 'Action', 'Entity', 'Entity ID'],
+        all.data.map((l) => [
+          l.createdAt,
+          l.actorName ?? l.actorEmail ?? 'System',
+          l.action,
+          l.entity,
+          l.entityId ?? '',
+        ])
+      )
+      toast.success('Export ready', `${all.data.length} entries exported.`)
+    } catch {
+      toast.error('Export failed', 'Could not export the audit log.')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const onSortChange = (key: string) =>
     setQuery((q) => ({ ...q, page: 1, sort: key, order: q.sort === key && q.order === 'asc' ? 'desc' : 'asc' }))
@@ -127,6 +154,9 @@ export function AuditTable() {
         rowKey={(l) => l.id}
         emptyMessage="No audit entries match your filters."
         toolbar={toolbar}
+        enableColumnVisibility
+        onExportCsv={onExportCsv}
+        exporting={exporting}
       />
       <AuditDetailDialog log={detail} onClose={() => setDetail(null)} />
     </>

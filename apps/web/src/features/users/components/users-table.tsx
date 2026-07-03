@@ -3,13 +3,18 @@
 import { useState } from 'react'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { hasPermission } from '@/lib/auth'
+import { downloadCsv } from '@/lib/csv'
+import { useRowSelection } from '@/lib/use-row-selection'
 import { useMe } from '@/features/auth/hooks'
-import { DataTable, type Column } from '@/components/data-table/data-table'
+import { DataTable, type BulkAction, type Column } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { useUsers } from '../hooks'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useToast } from '@/components/ui/toast'
+import { usersApi } from '../api'
+import { useDeleteUser, useUsers } from '../hooks'
 import type { ListUsersQuery, User } from '../types'
 import { UserFormDialog } from './user-form-dialog'
 import { DeleteUserDialog } from './delete-user-dialog'
@@ -17,6 +22,7 @@ import { DeleteUserDialog } from './delete-user-dialog'
 const dateFmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
 export function UsersTable() {
+  const toast = useToast()
   const { data: me } = useMe()
   const canWrite = me ? hasPermission(me.permissions, 'users:write') : false
   const canDelete = me ? hasPermission(me.permissions, 'users:delete') : false
@@ -31,8 +37,54 @@ export function UsersTable() {
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<User | undefined>(undefined)
   const [deleting, setDeleting] = useState<User | null>(null)
+  const [bulkIds, setBulkIds] = useState<string[] | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
+  const selection = useRowSelection()
+  const deleteUser = useDeleteUser()
   const { data, isLoading, isError, isFetching, refetch } = useUsers(query)
+
+  const confirmBulkDelete = async () => {
+    if (!bulkIds) return
+    setBulkBusy(true)
+    const results = await Promise.allSettled(bulkIds.map((id) => deleteUser.mutateAsync(id)))
+    const ok = results.filter((r) => r.status === 'fulfilled').length
+    const failed = results.length - ok
+    setBulkBusy(false)
+    setBulkIds(null)
+    selection.clear()
+    // Server guards (last Admin, self) can reject some — report the summary.
+    if (failed === 0) toast.success('Deleted', `${ok} user${ok === 1 ? '' : 's'} deleted.`)
+    else toast.error('Partly failed', `${ok} deleted, ${failed} blocked or failed.`)
+  }
+
+  const onExportCsv = async () => {
+    setExporting(true)
+    try {
+      const all = await usersApi.list({ ...query, page: 1, pageSize: 1000 })
+      downloadCsv(
+        'users.csv',
+        ['Name', 'Email', 'Roles', 'Status', 'Created'],
+        all.data.map((u) => [
+          u.name ?? '',
+          u.email,
+          u.roles.map((r) => r.name).join(' | '),
+          u.status,
+          u.createdAt,
+        ])
+      )
+      toast.success('Export ready', `${all.data.length} users exported.`)
+    } catch {
+      toast.error('Export failed', 'Could not export users.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const bulkActions: BulkAction[] | undefined = canDelete
+    ? [{ label: 'Delete', icon: Trash2, destructive: true, loading: bulkBusy, onClick: (ids) => setBulkIds(ids) }]
+    : undefined
 
   const onSortChange = (key: string) =>
     setQuery((q) => ({
@@ -180,6 +232,11 @@ export function UsersTable() {
         rowKey={(u) => u.id}
         emptyMessage="No users match your filters."
         toolbar={toolbar}
+        selection={canDelete ? selection : undefined}
+        bulkActions={bulkActions}
+        enableColumnVisibility
+        onExportCsv={onExportCsv}
+        exporting={exporting}
       />
 
       {/* Keyed + mounted-on-open so each dialog initializes fresh from its target. */}
@@ -192,6 +249,15 @@ export function UsersTable() {
         />
       )}
       {deleting && <DeleteUserDialog key={deleting.id} user={deleting} onClose={() => setDeleting(null)} />}
+      <ConfirmDialog
+        open={Boolean(bulkIds)}
+        onClose={() => setBulkIds(null)}
+        onConfirm={confirmBulkDelete}
+        title="Delete users"
+        description={`Delete ${bulkIds?.length ?? 0} selected user${bulkIds?.length === 1 ? '' : 's'}? Server guards may block deleting the last Admin or yourself.`}
+        confirmLabel="Delete"
+        loading={bulkBusy}
+      />
     </>
   )
 }

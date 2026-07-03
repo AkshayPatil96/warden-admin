@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select'
 import { FormField } from '@/components/ui/form-field'
 import { Alert } from '@/components/ui/alert'
 import { centsFromAmount, amountFromCents } from '@/lib/format'
+import { useToast } from '@/components/ui/toast'
 import { useCustomerOptions } from '@/features/customers/hooks'
 import { useCreateSubscription, useUpdateSubscription } from '../hooks'
 import type { BillingInterval, Subscription, SubscriptionPlan, SubscriptionStatus } from '../types'
@@ -26,6 +27,7 @@ const INTERVALS: BillingInterval[] = ['MONTHLY', 'YEARLY']
 const defaultPeriodEnd = () => new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10)
 
 export function SubscriptionFormDialog({ open, onClose, subscription }: Props) {
+  const toast = useToast()
   const isEdit = Boolean(subscription)
   const customers = useCustomerOptions()
   const createSub = useCreateSubscription()
@@ -55,7 +57,13 @@ export function SubscriptionFormDialog({ open, onClose, subscription }: Props) {
       priceCents: centsFromAmount(price),
       currentPeriodEnd: periodEnd,
     }
-    const onDone = { onSuccess: onClose, onError: (err: unknown) => setFormError(errMsg(err)) }
+    const onDone = {
+      onSuccess: () => {
+        toast.success(isEdit ? 'Subscription updated' : 'Subscription created')
+        onClose()
+      },
+      onError: (err: unknown) => setFormError(errMsg(err)),
+    }
 
     if (isEdit && subscription) {
       const parsed = updateSubscriptionSchema.safeParse(common)
