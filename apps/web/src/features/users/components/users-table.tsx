@@ -229,6 +229,7 @@ export function UsersTable() {
         onRetry={() => refetch()}
         onSortChange={onSortChange}
         onPageChange={(page) => setQuery((q) => ({ ...q, page }))}
+        onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, page: 1, pageSize }))}
         rowKey={(u) => u.id}
         emptyMessage="No users match your filters."
         toolbar={toolbar}

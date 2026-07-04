@@ -5,8 +5,6 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
   AlertCircle,
   Download,
   SlidersHorizontal,
@@ -17,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
+import { DataTablePagination } from './pagination'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -55,6 +54,8 @@ interface DataTableProps<T> {
   onRetry?: () => void
   onSortChange: (key: string) => void
   onPageChange: (page: number) => void
+  onPageSizeChange?: (size: number) => void
+  pageSizeOptions?: number[]
   rowKey: (row: T) => string
   emptyMessage?: string
   toolbar?: React.ReactNode
@@ -79,6 +80,8 @@ export function DataTable<T>({
   onRetry,
   onSortChange,
   onPageChange,
+  onPageSizeChange,
+  pageSizeOptions,
   rowKey,
   emptyMessage = 'No records found.',
   toolbar,
@@ -88,10 +91,6 @@ export function DataTable<T>({
   onExportCsv,
   exporting,
 }: DataTableProps<T>) {
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1
-  const to = Math.min(page * pageSize, total)
-
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const visibleColumns = useMemo(
     () => columns.filter((c) => !c.header || !hidden.has(c.header)),
@@ -298,27 +297,15 @@ export function DataTable<T>({
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span className="tabular-nums">{total === 0 ? 'No results' : `${from}–${to} of ${total}`}</span>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || isLoading}>
-            <ChevronLeft className="size-4" />
-            Prev
-          </Button>
-          <span className="tabular-nums">
-            Page {page} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(page + 1)}
-            disabled={page >= totalPages || isLoading}
-          >
-            Next
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-      </div>
+      <DataTablePagination
+        page={page}
+        pageSize={pageSize}
+        total={total}
+        isLoading={isLoading}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+        pageSizeOptions={pageSizeOptions}
+      />
     </div>
   )
 }

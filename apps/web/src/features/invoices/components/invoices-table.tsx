@@ -230,6 +230,7 @@ export function InvoicesTable() {
         onRetry={() => refetch()}
         onSortChange={onSortChange}
         onPageChange={(page) => setQuery((q) => ({ ...q, page }))}
+        onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, page: 1, pageSize }))}
         rowKey={(i) => i.id}
         emptyMessage="No invoices match your filters."
         toolbar={toolbar}

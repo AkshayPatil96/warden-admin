@@ -151,6 +151,7 @@ export function AuditTable() {
         onRetry={() => refetch()}
         onSortChange={onSortChange}
         onPageChange={(page) => setQuery((q) => ({ ...q, page }))}
+        onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, page: 1, pageSize }))}
         rowKey={(l) => l.id}
         emptyMessage="No audit entries match your filters."
         toolbar={toolbar}

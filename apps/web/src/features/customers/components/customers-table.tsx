@@ -208,6 +208,7 @@ export function CustomersTable() {
         onRetry={() => refetch()}
         onSortChange={onSortChange}
         onPageChange={(page) => setQuery((q) => ({ ...q, page }))}
+        onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, page: 1, pageSize }))}
         rowKey={(c) => c.id}
         emptyMessage="No customers match your filters."
         toolbar={toolbar}

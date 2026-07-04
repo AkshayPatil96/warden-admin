@@ -236,6 +236,7 @@ export function SubscriptionsTable() {
         onRetry={() => refetch()}
         onSortChange={onSortChange}
         onPageChange={(page) => setQuery((q) => ({ ...q, page }))}
+        onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, page: 1, pageSize }))}
         rowKey={(s) => s.id}
         emptyMessage="No subscriptions match your filters."
         toolbar={toolbar}
