@@ -17,6 +17,7 @@ function sessionCookieOptions(expiresAt: Date): CookieOptions {
 		// Cross-origin deploy (Vercel frontend + separate API host) needs SameSite=None, which requires Secure.
 		// Local dev runs over http, so fall back to Lax there.
 		sameSite: env.COOKIE_SECURE ? 'none' : 'lax',
+		domain: env.COOKIE_DOMAIN,
 		path: '/',
 		expires: expiresAt,
 	}
@@ -41,6 +42,7 @@ export function clearSessionCookie(res: Response): void {
 		httpOnly: true,
 		secure: env.COOKIE_SECURE,
 		sameSite: env.COOKIE_SECURE ? 'none' : 'lax',
+		domain: env.COOKIE_DOMAIN,
 		path: '/',
 	})
 }

@@ -21,6 +21,10 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  // Unset (default) = host-only cookie, correct for local dev (frontend/API share "localhost").
+  // Set to ".example.com" when the frontend and API live on different subdomains of the same
+  // site, so the session cookie is visible to both.
+  COOKIE_DOMAIN: z.string().optional(),
 })
 
 export const env = envSchema.parse(process.env)
