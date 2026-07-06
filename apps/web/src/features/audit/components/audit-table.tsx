@@ -17,7 +17,7 @@ import { AuditDetailDialog } from './audit-detail-dialog'
 const dateTimeFmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 // Matches the entity values the audit writers emit (grep: entity: '...').
-const ENTITIES = ['user', 'session', 'customer', 'subscription', 'invoice']
+const ENTITIES = ['user', 'role', 'session', 'customer', 'subscription', 'invoice']
 
 export function AuditTable() {
   const toast = useToast()

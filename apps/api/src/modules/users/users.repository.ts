@@ -1,10 +1,11 @@
 import { Prisma } from '../../generated/prisma/client.js'
 import type { PrismaClient, UserStatus } from '../../generated/prisma/client.js'
 import { prisma } from '../../lib/prisma.js'
+import { ADMIN_ROLE_NAME } from '../roles/roles.repository.js'
+
+export { ADMIN_ROLE_NAME }
 
 type DbClient = PrismaClient | Prisma.TransactionClient
-
-export const ADMIN_ROLE_NAME = 'Admin'
 
 export type UserEntity = Prisma.UserGetPayload<{
   include: { roles: { include: { role: true } } }

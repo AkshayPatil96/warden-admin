@@ -42,7 +42,9 @@ export function LoginForm() {
 
     login.mutate(parsed.data, {
       onSuccess: () => {
-        router.replace(safeInternalPath(params.get('next')))
+        console.log('params.get(`next`): ', params.get('next'))
+        console.log('safeInternalPath(params.get(`next`)): ', safeInternalPath(params.get('next')))
+        // router.replace(safeInternalPath(params.get('next')))
       },
       onError: (err) => {
         // 401 here means bad credentials; the API returns a generic message by design.
@@ -51,7 +53,7 @@ export function LoginForm() {
             ? 'Too many attempts. Please wait a moment and try again.'
             : err instanceof Error
               ? err.message
-              : 'Unable to sign in. Please try again.'
+              : 'Unable to sign in. Please try again.',
         )
       },
     })

@@ -13,6 +13,8 @@ async function main() {
     'users:read',
     'users:write',
     'users:delete',
+    'roles:write',
+    'roles:delete',
     'audit:read',
     'settings:read',
     'settings:write',
@@ -58,7 +60,14 @@ async function main() {
       description: 'Limited write access.',
       permissions: {
         create: permissions
-          .filter((key) => key !== 'users:delete' && key !== 'settings:write' && key !== 'billing:delete')
+          .filter(
+            (key) =>
+              key !== 'users:delete' &&
+              key !== 'settings:write' &&
+              key !== 'billing:delete' &&
+              key !== 'roles:write' &&
+              key !== 'roles:delete'
+          )
           .map((key) => ({
             permission: {
               connect: { key },

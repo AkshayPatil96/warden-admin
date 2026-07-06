@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { UsersTable } from '@/features/users/components/users-table'
+import { UsersAndRolesTabs } from '@/features/users/components/users-and-roles-tabs'
 
 export const metadata: Metadata = { title: 'Users & Roles · Warden Admin' }
 
@@ -12,7 +12,7 @@ export default function UsersPage() {
           Manage accounts, assign roles, and control access. Every change is audited.
         </p>
       </div>
-      <UsersTable />
+      <UsersAndRolesTabs />
     </div>
   )
 }

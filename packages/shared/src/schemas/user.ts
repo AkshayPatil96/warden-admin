@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { paginationQuerySchema } from './common.js'
+import { roleSummarySchema } from './role.js'
 
 export const userStatusSchema = z.enum(['ACTIVE', 'SUSPENDED'])
 export type UserStatus = z.infer<typeof userStatusSchema>
@@ -12,12 +13,6 @@ const strongPasswordSchema = z
   .regex(/[a-z]/, 'Password must contain a lowercase letter.')
   .regex(/[A-Z]/, 'Password must contain an uppercase letter.')
   .regex(/[0-9]/, 'Password must contain a number.')
-
-export const roleSummarySchema = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-})
-export type RoleSummary = z.infer<typeof roleSummarySchema>
 
 // Never includes passwordHash — the API maps to this shape before responding.
 export const userSchema = z.object({
@@ -57,17 +52,4 @@ export interface UserListResult {
   total: number
   page: number
   pageSize: number
-}
-
-// Read-only role listing — populates the assignment picker and shows what each grants.
-export const roleSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  description: z.string().nullable(),
-  permissions: z.array(z.string()),
-})
-export type Role = z.infer<typeof roleSchema>
-
-export interface RoleListResult {
-  data: Role[]
 }

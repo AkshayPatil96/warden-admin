@@ -2,48 +2,44 @@ name: CI
 
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
 
 jobs:
-  verify:
+  ci:
+    name: Build and Test
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: admin
-          POSTGRES_DB: admin_panel_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U admin -d admin_panel_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      DATABASE_URL: postgresql://admin:admin@localhost:5432/admin_panel_test?schema=public
-      SESSION_SECRET: ci-test-secret-ci-test-secret-ci
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
+        with:
+          version: latest
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma client + run migrations
+      - name: Run migrations
         run: pnpm --filter @admin/api db:deploy
 
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
+      - name: Generate Prisma client
+        run: pnpm --filter @admin/api db:generate
+
+      - name: Lint code
+        run: pnpm lint
+
+      - name: Typecheck code
+        run: pnpm typecheck
+
+      - name: Run tests
+        run: pnpm test
+        
+      - name: Build project
+        run: pnpm build
