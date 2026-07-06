@@ -42,8 +42,6 @@ export function LoginForm() {
 
     login.mutate(parsed.data, {
       onSuccess: () => {
-        console.log('params.get(`next`): ', params.get('next'))
-        console.log('safeInternalPath(params.get(`next`)): ', safeInternalPath(params.get('next')))
         router.push(safeInternalPath(params.get('next')))
       },
       onError: (err) => {
