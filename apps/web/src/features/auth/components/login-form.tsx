@@ -44,7 +44,7 @@ export function LoginForm() {
       onSuccess: () => {
         console.log('params.get(`next`): ', params.get('next'))
         console.log('safeInternalPath(params.get(`next`)): ', safeInternalPath(params.get('next')))
-        // router.replace(safeInternalPath(params.get('next')))
+        router.push(safeInternalPath(params.get('next')))
       },
       onError: (err) => {
         // 401 here means bad credentials; the API returns a generic message by design.
