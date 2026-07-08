@@ -19,8 +19,6 @@ const ADMIN = [
   'billing:write',
   'billing:delete',
   'audit:read',
-  'settings:read',
-  'settings:write',
 ]
 const VIEWER = ['users:read', 'audit:read', 'billing:read']
 
