@@ -20,8 +20,8 @@ export interface NavItem {
 }
 
 // Permission gates make the sidebar visibly differ per role: a Viewer (no
-// users:write / settings:read) sees fewer items than an Admin. That difference
-// is the whole point of the RBAC demo.
+// users:write) sees fewer items than an Admin. That difference is the whole
+// point of the RBAC demo.
 export const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Customers', href: '/customers', icon: Users, permission: 'billing:read' },

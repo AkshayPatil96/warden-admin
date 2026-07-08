@@ -16,8 +16,6 @@ async function main() {
     'roles:write',
     'roles:delete',
     'audit:read',
-    'settings:read',
-    'settings:write',
     'billing:read',
     'billing:write',
     'billing:delete',
@@ -63,10 +61,9 @@ async function main() {
           .filter(
             (key) =>
               key !== 'users:delete' &&
-              key !== 'settings:write' &&
               key !== 'billing:delete' &&
               key !== 'roles:write' &&
-              key !== 'roles:delete'
+              key !== 'roles:delete',
           )
           .map((key) => ({
             permission: {
@@ -131,10 +128,34 @@ async function main() {
 
   await prisma.customer.createMany({
     data: [
-      { name: 'Acme Corp', email: 'billing@acme.test', company: 'Acme Corp', status: 'ACTIVE', mrrCents: 49900 },
-      { name: 'Globex', email: 'ap@globex.test', company: 'Globex', status: 'ACTIVE', mrrCents: 129900 },
-      { name: 'Initech', email: 'accounts@initech.test', company: 'Initech', status: 'PAST_DUE', mrrCents: 9900 },
-      { name: 'Hooli', email: 'finance@hooli.test', company: 'Hooli', status: 'CANCELED', mrrCents: 0 },
+      {
+        name: 'Acme Corp',
+        email: 'billing@acme.test',
+        company: 'Acme Corp',
+        status: 'ACTIVE',
+        mrrCents: 49900,
+      },
+      {
+        name: 'Globex',
+        email: 'ap@globex.test',
+        company: 'Globex',
+        status: 'ACTIVE',
+        mrrCents: 129900,
+      },
+      {
+        name: 'Initech',
+        email: 'accounts@initech.test',
+        company: 'Initech',
+        status: 'PAST_DUE',
+        mrrCents: 9900,
+      },
+      {
+        name: 'Hooli',
+        email: 'finance@hooli.test',
+        company: 'Hooli',
+        status: 'CANCELED',
+        mrrCents: 0,
+      },
     ],
   })
 
