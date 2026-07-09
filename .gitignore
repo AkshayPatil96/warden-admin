@@ -39,3 +39,5 @@ coverage/
 apps/api/src/lib/*.node.tmp*
 
 docs/
+# Playwright MCP session artifacts
+.playwright-mcp/

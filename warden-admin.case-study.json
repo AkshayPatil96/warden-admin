@@ -1,0 +1,144 @@
+{
+  "id": 2,
+  "title": "Warden Admin Panel",
+  "slug": "warden-admin-panel",
+  "description": "Designed and built a production-grade internal admin panel with self-rolled session auth, permission-based RBAC, and full audit logging — a study in security judgment where the server is always the source of truth.",
+  "impact": "Delivered granular, permission-checked authorization enforced entirely at the API layer, with tamper-evident audit trails on every sensitive mutation. Self-rolled session auth (Argon2id, httpOnly cookies, server-side session store) replaces a third-party BaaS to demonstrate the underlying security fundamentals — timing-safe logins, account lockout, session revocation on credential change, and zero tokens ever exposed to client JavaScript.",
+  "image": "https://raw.githubusercontent.com/AkshayPatil96/warden-admin/main/case-study-screenshots/02-dashboard.png",
+  "tags": ["Next.js", "TypeScript", "Express", "Prisma", "PostgreSQL", "Zod", "TanStack Query", "Tailwind", "Argon2id", "Docker"],
+  "variant": "tiltneon",
+  "caseStudy": {
+    "number": "02",
+    "heroDescription": "An internal-tools admin panel engineered around a single principle — permissions are checked on the server, always. Self-rolled auth, granular RBAC, and audit logging built to convince a senior reviewer this is real, shippable software.",
+    "liveUrl": "https://warden-admin.akshforge.com",
+    "githubUrl": "https://github.com/AkshayPatil96/warden-admin",
+    "screenshots": [
+      "https://raw.githubusercontent.com/AkshayPatil96/warden-admin/main/case-study-screenshots/01-login.png",
+      "https://raw.githubusercontent.com/AkshayPatil96/warden-admin/main/case-study-screenshots/03-customers.png",
+      "https://raw.githubusercontent.com/AkshayPatil96/warden-admin/main/case-study-screenshots/04-subscriptions.png",
+      "https://raw.githubusercontent.com/AkshayPatil96/warden-admin/main/case-study-screenshots/05-invoices.png",
+      "https://raw.githubusercontent.com/AkshayPatil96/warden-admin/main/case-study-screenshots/06-users-roles.png",
+      "https://raw.githubusercontent.com/AkshayPatil96/warden-admin/main/case-study-screenshots/07-audit-log.png"
+    ],
+    "challenge": {
+      "eyebrow": "THE CHALLENGE",
+      "title": "Authorization You Can Actually Trust",
+      "description": "Most admin panels lean on a BaaS for auth and gate the UI with role strings — which looks fine until you realize the client is deciding what it's allowed to do. The real challenge was building an access-control system that a security reviewer would trust: authorization enforced on the server for every request, granular permissions rather than role checks, credential handling that resists timing and enumeration attacks, and an audit trail that proves who changed what and when — all without hiding the mechanics behind a third-party service."
+    },
+    "engineeringResponse": {
+      "eyebrow": "ENGINEERING RESPONSE",
+      "title": "Server-Authoritative RBAC on a Layered Monolith",
+      "solutions": [
+        {
+          "icon": "key",
+          "title": "Self-Rolled Session Auth",
+          "description": "Argon2id password hashing, opaque server-side sessions stored in Postgres, and httpOnly + Secure + SameSite cookies — no tokens in localStorage, ever. Sessions are revocable server-side, so a password change or reset can invalidate stolen cookies instantly."
+        },
+        {
+          "icon": "verified_user",
+          "title": "Permission-Based Authorization",
+          "description": "An authorize('orders:write') middleware gates every protected route against granular permission keys resolved from the user's roles — never against role strings. UI hiding/disabling is treated as UX only; the API is the single source of truth."
+        },
+        {
+          "icon": "hub",
+          "title": "Shared-Schema Modular Monolith",
+          "description": "Eight domain modules (auth, users, roles, customers, subscriptions, invoices, analytics, audit), each layered routes → controller → service → repository. Zod schemas live in a shared package and validate on both the API and the web forms — one contract, no drift."
+        }
+      ]
+    },
+    "architectureImage": "https://placehold.co/800x300/131313/e5c497?text=Layered+Modular+Monolith",
+    "architectureCaption": "MODULAR MONOLITH — ROUTES → CONTROLLER → SERVICE → REPOSITORY",
+    "architectureNote": "Chose a modular monolith with strict per-module layering over microservices — clear domain boundaries and testability without the operational tax of distributed infra for one app and one database.",
+    "deepDive": {
+      "eyebrow": "DEEP DIVE",
+      "cards": [
+        {
+          "icon": "shield",
+          "title": "Permissions, Not Roles",
+          "description": "Roles (Admin / Manager / Viewer) are just bundles of permissions. The gate checks the atomic permission — 'invoices:delete' — so a role's capabilities can change without touching a single route. The difference is visibly enforced in both API responses and UI affordances."
+        },
+        {
+          "icon": "timer",
+          "title": "Timing-Safe, Enumeration-Resistant Login",
+          "description": "A missing account still runs a verify against a pre-computed dummy Argon2id hash, so the response time matches the real path and attackers can't enumerate which emails exist. Password-reset requests always return 204 for the same reason."
+        },
+        {
+          "icon": "history",
+          "title": "Audit Log as a First-Class Citizen",
+          "description": "Every sensitive mutation writes an audit entry (actor, action, entity, before/after JSON) inside the same transaction as the change itself — so the record and its proof commit or roll back together. Logins, lockouts, and session revocations are all captured."
+        },
+        {
+          "icon": "cookie",
+          "title": "Cross-Origin httpOnly Sessions",
+          "description": "The Vercel-hosted frontend and a separate API host mean the session cookie is SameSite=None + Secure in production, falling back to Lax over http locally. A lightweight Next proxy does a cheap presence redirect — defense in depth, never the real gate."
+        }
+      ]
+    },
+    "hardParts": {
+      "eyebrow": "THE HARD PARTS",
+      "title": "The Details Security Reviewers Look For",
+      "items": [
+        {
+          "title": "Closing the Account-Enumeration Gaps",
+          "description": "The obvious login is a leak: real accounts run Argon2 (slow), missing ones return instantly (fast), and that gap reveals valid emails. Solved by verifying against a throwaway Argon2id hash on the no-account path, returning one generic error for every failure, and making password-reset responses indistinguishable whether or not the email exists."
+        },
+        {
+          "title": "Session Lifecycle on Credential Change",
+          "description": "Changing a password can't silently leave old sessions valid. A password change atomically revokes every OTHER session but keeps the current one; a reset revokes ALL sessions. Both happen in a transaction alongside the hash update and audit write, so there's no window where an old cookie still works."
+        },
+        {
+          "title": "Auditability Without Partial Writes",
+          "description": "An audit log that can drift from reality is worse than none. By threading the same Prisma transaction client through both the domain write and writeAudit(), a failure anywhere rolls back the audit entry too — the log can never claim something happened that didn't."
+        }
+      ],
+      "stats": [
+        { "value": "8", "label": "DOMAIN MODULES" },
+        { "value": "4-Layer", "label": "MODULE ARCHITECTURE" },
+        { "value": "0", "label": "TOKENS IN LOCALSTORAGE" },
+        { "value": "100%", "label": "SERVER-SIDE AUTHZ" }
+      ]
+    },
+    "infrastructure": {
+      "eyebrow": "INFRASTRUCTURE & DEPLOYMENT",
+      "title": "Environment Parity and a Gated Pipeline",
+      "items": [
+        {
+          "title": "One-Command Local Stack",
+          "description": "docker-compose brings up Postgres, the API, and the web app together, so local development mirrors production — the whole point being parity, not decoration."
+        },
+        {
+          "title": "CI Gate on Every PR",
+          "description": "GitHub Actions runs lint → typecheck → test → build, with Prisma migrations applied against a real Postgres service container. Nothing merges red."
+        },
+        {
+          "title": "Integration Tests Against Real Postgres",
+          "description": "Vitest suites test the auth flow, a permission-denied case, and critical CRUD end-to-end against a throwaway Postgres — the database is never mocked, so the tests exercise real query and transaction behavior."
+        },
+        {
+          "title": "Versioned Prisma Migrations",
+          "description": "All schema changes ship as versioned migrations in the repo; the database is never hand-edited. A seed script provisions demo data and the three role logins."
+        },
+        {
+          "title": "Split Deploy: API on EC2, Web on Vercel",
+          "description": "The Express API runs on a shared EC2 host while the Next.js frontend deploys to Vercel — driving the cross-origin, SameSite=None cookie design rather than assuming same-origin convenience."
+        }
+      ]
+    },
+    "tradeoffs": {
+      "eyebrow": "TRADE-OFFS",
+      "items": [
+        "Self-rolled session auth over Auth0/Clerk — more responsibility, but it demonstrates the security fundamentals a BaaS hides",
+        "Server-side sessions over stateless JWTs — a DB lookup per request buys instant, reliable revocation",
+        "Granular permissions over role checks — more rows to seed, but authorization that survives changing requirements",
+        "Modular monolith over microservices — clear boundaries without distributed-systems overhead for one app",
+        "Money stored as integer cents over floats — no rounding drift in billing math",
+        "Kept the repository layer even on thin CRUD for consistency, accepting some pass-through boilerplate"
+      ]
+    },
+    "retrospective": {
+      "eyebrow": "RETROSPECTIVE",
+      "quote": "Trust the Server, Never the Client.",
+      "closing": "The lesson that ran through every module was that security lives in the unhappy path — the missing account, the stolen cookie, the reset link replayed twice, the audit write that must not outlive its transaction. Building auth from primitives instead of importing a black box forced me to reason about each of those cases explicitly, and that's exactly the judgment this project exists to show."
+    }
+  }
+}
