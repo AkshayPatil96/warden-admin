@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
 import { loginRequestSchema } from '@admin/shared'
@@ -17,7 +17,6 @@ import { useLogin } from '../hooks'
 type FieldErrors = Partial<Record<'email' | 'password', string>>
 
 export function LoginForm() {
-  const router = useRouter()
   const params = useSearchParams()
   const login = useLogin()
 
@@ -42,7 +41,11 @@ export function LoginForm() {
 
     login.mutate(parsed.data, {
       onSuccess: () => {
-        router.push(safeInternalPath(params.get('next')))
+        // Full-document navigation, not router.push: the destination is gated by the
+        // proxy, and a client nav reuses the redirect-to-login RSC response cached
+        // while logged out — stranding the just-authenticated user back on /login.
+        // A hard load makes the proxy re-evaluate against the fresh session cookie.
+        window.location.assign(safeInternalPath(params.get('next')))
       },
       onError: (err) => {
         // 401 here means bad credentials; the API returns a generic message by design.
